@@ -1,6 +1,6 @@
 #include "obj_parser.h"
 
-void vertex_data::setData()
+void vertex_data::setVertexData()
 {
 	for (vector<float>::const_iterator it = v_data.begin(); it != v_data.end(); it++)
 		face_data.push_back(*it);
@@ -12,109 +12,7 @@ void vertex_data::setData()
 		face_data.push_back(*it);
 }
 
-obj_contents::obj_contents(const char* obj_file)
-{
-	fstream file;
-	file.open(obj_file, std::ifstream::in);
-
-	int position_counter = 1;
-	int uv_counter = 1;
-	int normal_counter = 1;
-	int paramspace_counter = 1;
-	vertex_count = 0;
-	face_count = 0;
-
-	while (!file.eof())
-	{
-		OBJ_DATA_TYPE type = NOT_SET;
-
-		string line;
-		std::getline(file, line, '\n');
-
-		switch (line[0])
-		{
-		case 'v':
-			if (line[1] == ' ')
-				type = POSITION;
-
-			if (line[1] == 't')
-				type = UV;
-
-			if (line[1] == 'n')
-				type = NORMAL;
-
-			if (line[1] == 'p')
-				type = PARAM_SPACE;
-
-			break;
-
-		case 'f': type = FACE_DEF; break;
-		case '#': continue;
-		case '\n': continue;
-		default: break;
-		}
-
-		if (type != FACE_DEF && type != NOT_SET)
-		{
-			vector<float> floats(extractFloats(line));
-
-			switch (type)
-			{
-			case POSITION:
-				v_data[position_counter] = floats;
-				position_counter++;
-				break;
-			case UV:
-				vt_data[uv_counter] = floats;
-				uv_counter++;
-				break;
-			case NORMAL:
-				vn_data[normal_counter] = floats;
-				normal_counter++;
-				break;
-			case PARAM_SPACE:
-				vp_data[paramspace_counter] = floats;
-				paramspace_counter++;
-				break;
-			default: break;
-			}
-		}
-
-		else if (type == FACE_DEF)
-		{
-			//face_data contains the index list for each line (each face)
-			//	1/1/1  2/2/2  3/3/3
-			vector< vector<int> > extracted_face_data(extractFaceSequence(line));
-		
-			vector<vertex_data> face;
-			//generates positions, uv coordinates, and normals for the line (each sequence line = 1 face)
-			for (vector< vector<int> >::iterator it = extracted_face_data.begin(); it != extracted_face_data.end(); it++)
-			{
-				int v_index = (*it)[0];
-				int vt_index = (*it)[1];
-				int vn_index = (*it)[2];
-				vector<float> position_data = v_data.at(v_index);
-				vector<float> uv_data = vt_data.at(vt_index);
-				vector<float> normal_data = vn_data.at(vn_index);
-
-				vertex_data vert(position_data, uv_data, normal_data);
-				vertex_count++;
-				face.push_back(vert);
-
-				all_v_data.insert(all_v_data.end(), position_data.begin(), position_data.end());
-				all_vt_data.insert(all_vt_data.end(), uv_data.begin(), uv_data.end());
-				all_vn_data.insert(all_vn_data.end(), normal_data.begin(), normal_data.end());
-			}
-			faces.push_back(face);
-			face_count++;
-		}
-	}
-
-	setData();
-	file.close();
-}
-
-void obj_contents::setData()
+void mesh_data::setMeshData()
 {
 	for (vector< vector<vertex_data> >::const_iterator faces_it = faces.begin();
 		faces_it != faces.end(); faces_it++)
@@ -144,6 +42,127 @@ void obj_contents::setData()
 		vt_count = faces.begin()->begin()->getVTCount();
 		vn_count = faces.begin()->begin()->getVNCount();
 	}
+}
+
+obj_contents::obj_contents(const char* obj_file)
+{
+	fstream file;
+	file.open(obj_file, std::ifstream::in);
+
+	bool end_of_vertex_data = false;
+
+	meshes.push_back(mesh_data());
+	vector<mesh_data>::iterator current_mesh = meshes.begin();
+
+	int v_counter = 1;
+	int vt_counter = 1;
+	int vn_counter = 1;
+	int vp_counter = 1;
+	int vertices_per_face = 0;
+
+	while (!file.eof())
+	{
+		OBJ_DATA_TYPE type = NOT_SET;
+
+		string line;
+		std::getline(file, line, '\n');
+
+		switch (line[0])
+		{
+		case 'v':
+			if (end_of_vertex_data)
+			{		
+				meshes.push_back(mesh_data());
+				current_mesh = meshes.end() - 1;
+				current_mesh->setPolygonSize(vertices_per_face);
+				end_of_vertex_data = false;
+			}
+
+			if (line[1] == ' ')
+				type = V_DATA;
+
+			if (line[1] == 't')
+				type = VT_DATA;
+
+			if (line[1] == 'n')
+				type = VN_DATA;
+
+			if (line[1] == 'p')
+				type = VP_DATA;
+
+			break;
+
+		case 'f': type = F_DATA; break;
+		case '#': continue;
+		case '\n': continue;
+		case 'g': end_of_vertex_data = true; continue;
+		default: continue;
+		}
+
+		if (type != F_DATA && type != NOT_SET)
+		{
+			vector<float> floats(extractFloats(line));
+
+			switch (type)
+			{
+			case V_DATA:
+				raw_v_data[v_counter] = floats;
+				v_counter++;
+				break;
+			case VT_DATA:
+				raw_vt_data[vt_counter] = floats;
+				vt_counter++;
+				break;
+			case VN_DATA:
+				raw_vn_data[vn_counter] = floats;
+				vn_counter++;
+				break;
+			case VP_DATA:
+				raw_vp_data[vp_counter] = floats;
+				vp_counter++;
+				break;
+			default: break;
+			}
+		}
+
+		else if (type == F_DATA)
+		{
+			//face_data contains the index list for each line (each face)
+			//	1/1/1  2/2/2  3/3/3
+			vector< vector<int> > extracted_face_data(extractFaceSequence(line));
+		
+			//detects if vpf has been determined, detects and sets current mesh
+			if (vertices_per_face == 0)
+			{
+				vertices_per_face = extracted_face_data.size();
+				current_mesh->setPolygonSize(vertices_per_face);
+			}
+				
+			vector<vertex_data> face;
+			//generates positions, uv coordinates, and normals for the line (each sequence line = 1 face)
+			for (vector< vector<int> >::iterator it = extracted_face_data.begin(); it != extracted_face_data.end(); it++)
+			{
+				int v_index = (*it)[0];
+				int vt_index = (*it)[1];
+				int vn_index = (*it)[2];
+				vector<float> position_data = raw_v_data.at(v_index);
+				vector<float> uv_data = raw_vt_data.at(vt_index);
+				vector<float> normal_data = raw_vn_data.at(vn_index);
+
+				vertex_data vert(position_data, uv_data, normal_data);
+				face.push_back(vert);
+
+				current_mesh->addVData(position_data);
+				current_mesh->addVTData(uv_data);
+				current_mesh->addVNData(normal_data);
+			}
+			current_mesh->addFace(face);
+		}
+	}
+	file.close();
+
+	for (vector<mesh_data>::iterator it = meshes.begin(); it != meshes.end(); it++)
+		it->setMeshData();
 }
 
 const vector<float> extractFloats(const string &s)
@@ -279,4 +298,10 @@ const vector< vector<int> > extractFaceSequence(const string &s)
 	}
 
 	return index_list;
+}
+
+const vector<mesh_data> generateMeshes(const char* file_path)
+{
+	obj_contents contents(file_path);
+	return contents.getMeshes();
 }
