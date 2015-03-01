@@ -58,7 +58,8 @@ obj_contents::obj_contents(const char* obj_file)
 	int vt_counter = 1;
 	int vn_counter = 1;
 	int vp_counter = 1;
-	int vertices_per_face = 0;
+
+	vector<OBJ_DATA_TYPE> index_order;
 
 	while (!file.eof())
 	{
@@ -74,8 +75,8 @@ obj_contents::obj_contents(const char* obj_file)
 			{		
 				meshes.push_back(mesh_data());
 				current_mesh = meshes.end() - 1;
-				current_mesh->setPolygonSize(vertices_per_face);
 				end_of_vertex_data = false;
+				index_order.clear();
 			}
 
 			if (line[1] == ' ')
@@ -95,12 +96,16 @@ obj_contents::obj_contents(const char* obj_file)
 		case 'f': type = F_DATA; break;
 		case '#': continue;
 		case '\n': continue;
+		case 's': continue;
 		case 'g': end_of_vertex_data = true; continue;
 		default: continue;
 		}
 
 		if (type != F_DATA && type != NOT_SET)
 		{
+			if (std::find(index_order.begin(), index_order.end(), type) == index_order.end())
+				index_order.push_back(type);
+
 			vector<float> floats(extractFloats(line));
 
 			switch (type)
@@ -130,33 +135,75 @@ obj_contents::obj_contents(const char* obj_file)
 			//face_data contains the index list for each line (each face)
 			//	1/1/1  2/2/2  3/3/3
 			vector< vector<int> > extracted_face_data(extractFaceSequence(line));
-		
-			//detects if vpf has been determined, detects and sets current mesh
-			if (vertices_per_face == 0)
+			
+			//generate vertex data objects from sequences passed
+			vector<vertex_data> extracted_vertices;
+			for (int i = 0; i < extracted_face_data.size(); i++)
 			{
-				vertices_per_face = extracted_face_data.size();
-				current_mesh->setPolygonSize(vertices_per_face);
-			}
-				
-			vector<vertex_data> face;
-			//generates positions, uv coordinates, and normals for the line (each sequence line = 1 face)
-			for (vector< vector<int> >::iterator it = extracted_face_data.begin(); it != extracted_face_data.end(); it++)
-			{
-				int v_index = (*it)[0];
-				int vt_index = (*it)[1];
-				int vn_index = (*it)[2];
-				vector<float> position_data = raw_v_data.at(v_index);
-				vector<float> uv_data = raw_vt_data.at(vt_index);
-				vector<float> normal_data = raw_vn_data.at(vn_index);
+				int v_index = 0;
+				int vt_index = 0;
+				int vn_index = 0;
+				int vp_index = 0;
+				vector<float> position_data;
+				vector<float> uv_data;
+				vector<float> normal_data;
+
+				for (int n = 0; n < index_order.size(); n++)
+				{
+					switch (index_order[n])
+					{
+					case V_DATA:
+						v_index = extracted_face_data[i][n];
+						position_data = raw_v_data.at(v_index);
+						break;
+					case VT_DATA:
+						vt_index = extracted_face_data[i][n];
+						uv_data = raw_vt_data.at(vt_index);
+						break;
+					case VN_DATA:
+						vn_index = extracted_face_data[i][n];
+						normal_data = raw_vn_data.at(vn_index);
+						break;
+					case VP_DATA:
+						vp_index = extracted_face_data[i][n];
+						break;
+					default: throw;
+					}
+				}
 
 				vertex_data vert(position_data, uv_data, normal_data);
-				face.push_back(vert);
+				extracted_vertices.push_back(vert);
 
 				current_mesh->addVData(position_data);
 				current_mesh->addVTData(uv_data);
 				current_mesh->addVNData(normal_data);
 			}
-			current_mesh->addFace(face);
+
+			//from extracted vertices, create 1 face for triangulated meshes,
+			//separate quadrangular meshes into 2 separate faces
+			if (extracted_face_data.size() == 3)
+			{
+				vector<vertex_data> face;
+				face.push_back(extracted_vertices[0]);
+				face.push_back(extracted_vertices[1]);
+				face.push_back(extracted_vertices[2]);
+				current_mesh->addFace(face);
+			}
+
+			else if (extracted_face_data.size() == 4)
+			{
+				vector<vertex_data> face1;
+				face1.push_back(extracted_vertices[0]);
+				face1.push_back(extracted_vertices[1]);
+				face1.push_back(extracted_vertices[3]);
+				current_mesh->addFace(face1);
+
+				vector<vertex_data> face2;
+				face2.push_back(extracted_vertices[1]);
+				face2.push_back(extracted_vertices[2]);
+				face2.push_back(extracted_vertices[3]);
+				current_mesh->addFace(face2);
+			}
 		}
 	}
 	file.close();

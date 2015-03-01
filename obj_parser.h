@@ -69,7 +69,7 @@ public:
 	void addVNData(const vector<float> &data) { all_vn_data.insert(all_vn_data.end(), data.begin(), data.end()); }
 	void addVPData(const vector<float> &data) { all_vp_data.insert(all_vp_data.end(), data.begin(), data.end()); }
 
-	void setPolygonSize(int n) { vertices_per_face = n; }
+	//void setPolygonSize(int n) { vertices_per_face = n; }
 
 	const int getInterleaveStride() const { return interleave_stride; }
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
@@ -84,7 +84,7 @@ public:
 	const int getVertexCount() const { return vertex_count; }
 	//returns # of faces stored
 	const int getFaceCount() const { return total_face_count; }
-	const int getFaceSize() const { return vertices_per_face; }
+	//const int getFaceSize() const { return vertices_per_face; }
 	const int getFloatCount() const { return interleave_data.size(); }
 
 	const vector<float> getVData() const { return all_v_data; }
@@ -121,7 +121,7 @@ private:
 	//# of faces are stored total
 	int total_face_count;
 	//3 for triangles, 4 for quads
-	int vertices_per_face;
+	//int vertices_per_face;
 };
 
 class obj_contents
