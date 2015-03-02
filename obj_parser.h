@@ -14,16 +14,23 @@ using std::vector;
 using std::fstream;
 
 class vertex_data;
+class material_data;
 class mesh_data;
 class obj_contents;
 
 #define PRINTLINE std::cout << __FILE__ << ", " << __LINE__ << std::endl;
 
-enum OBJ_DATA_TYPE { NOT_SET, F_DATA, V_DATA, VT_DATA, VN_DATA, VP_DATA };
+enum DATA_TYPE { UNDEFINED, OBJ_MTLLIB, OBJ_F, OBJ_V, OBJ_VT, OBJ_VN, OBJ_VP, OBJ_G, OBJ_USEMTL,
+				MTL_NEWMTL, MTL_KA, MTL_KD, MTL_KS, MTL_NS, MTL_D, 
+				MTL_MAP_KA, MTL_MAP_KD, MTL_MAP_KS, MTL_MAP_D, MTL_MAP_NS, MTL_MAP_BUMP, MTL_MAP_DISP, MTL_DECAL
+};
 
 const vector<float> extractFloats(const string &s);
 const vector< vector<int> > extractFaceSequence(const string &s);
 const vector<mesh_data> generateMeshes(const char* file_path);
+const map<string, material_data> generateMaterials(const char* file_path);
+const DATA_TYPE getDataType(const string &line);
+const string extractName(const string &line);
 
 class vertex_data
 {
@@ -61,20 +68,23 @@ public:
 	mesh_data() : total_face_count(0), vertex_count(0) {};
 	~mesh_data(){};
 
-	void addFace(vector<vertex_data> &data) { faces.push_back(data); total_face_count++; vertex_count += data.size(); }
+	void setMeshName(string n) { mesh_name = n; }
+	void setMaterialName(string n) { material_name = n; }
+
+	const string getMaterialName() const { return material_name; }
+	const string getMeshlName() const { return mesh_name; }
 
 	//this data keeps list of vertex information as used by OpenGL
 	void addVData(const vector<float> &data) { all_v_data.insert(all_v_data.end(), data.begin(), data.end()); }
 	void addVTData(const vector<float> &data) { all_vt_data.insert(all_vt_data.end(), data.begin(), data.end()); }
 	void addVNData(const vector<float> &data) { all_vn_data.insert(all_vn_data.end(), data.begin(), data.end()); }
 	void addVPData(const vector<float> &data) { all_vp_data.insert(all_vp_data.end(), data.begin(), data.end()); }
-
-	//void setPolygonSize(int n) { vertices_per_face = n; }
+	void addFace(vector<vertex_data> &data) { faces.push_back(data); total_face_count++; vertex_count += data.size(); }
 
 	const int getInterleaveStride() const { return interleave_stride; }
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
-	const vector<float> getInterleaveData() const { return interleave_data; }
+	const vector<float> getInterleaveData() const;
 
 	//returns # of floats per vertex type
 	const int getVCount() const { return v_count; }
@@ -84,8 +94,7 @@ public:
 	const int getVertexCount() const { return vertex_count; }
 	//returns # of faces stored
 	const int getFaceCount() const { return total_face_count; }
-	//const int getFaceSize() const { return vertices_per_face; }
-	const int getFloatCount() const { return interleave_data.size(); }
+	const int getFloatCount() const { return total_float_count; }
 
 	const vector<float> getVData() const { return all_v_data; }
 	const vector<float> getVTData() const { return all_vt_data; }
@@ -98,6 +107,9 @@ private:
 	//vector of faces, each face is a vector of vertices
 	vector< vector<vertex_data> > faces;
 
+	string mesh_name;
+	string material_name;
+
 	//contain all vertices for all faces, accessed when
 	//vertices are not to be interleaved
 	vector<float> all_v_data;
@@ -109,7 +121,6 @@ private:
 	int interleave_stride;
 	int interleave_vt_offset;
 	int interleave_vn_offset;
-	vector<float> interleave_data;
 
 	//counts floats per vertex of each type (3 = vec3, 4 = vec4)
 	int v_count;
@@ -120,8 +131,7 @@ private:
 	int vertex_count;
 	//# of faces are stored total
 	int total_face_count;
-	//3 for triangles, 4 for quads
-	//int vertices_per_face;
+	int total_float_count;
 };
 
 class obj_contents
@@ -143,15 +153,63 @@ public:
 	const int getMeshCount() const { return meshes.size(); }
 	const vector<mesh_data> getMeshes() const { return meshes; }
 
+	vector<string> getErrors() const { return error_log; }
+
+	const string getMTLFilename() const { return mtl_filename; }
+
 private:
+	void addRawData(const vector<float> &floats, DATA_TYPE dt);
 	//uses vector<float> because # of floats per vertex varies
 	//data direct from obj file, unformatted
 	map<int, vector<float> > raw_v_data;
 	map<int, vector<float> > raw_vt_data;
 	map<int, vector<float> > raw_vn_data;
 	map<int, vector<float> > raw_vp_data;
+	string mtl_filename;
 
+	int v_index_counter;
+	int vt_index_counter;
+	int vn_index_counter;
+	int vp_index_counter;
+
+	vector<string> error_log;
 	vector<mesh_data> meshes;
+};
+
+class material_data
+{
+public:
+	material_data(){};
+	material_data(string s): material_name(s) {};
+	~material_data(){};
+
+	void setMaterialName(string s) { material_name = s; }
+	void setTextureFilename(string s) { texture_filename = s; }
+
+	void setData(DATA_TYPE dt, vector<float> floats) { data[dt] = floats; }
+
+	const string getTextureFilename() const { return texture_filename; }
+	const string getMaterialName() const { return material_name; }
+	const vector<float> getData(DATA_TYPE dt) const;
+private:
+	string material_name;
+	string texture_filename;
+
+	map<DATA_TYPE, vector<float> > data;
+};
+
+class mtl_contents
+{
+public:
+	mtl_contents(const char* mtl_file);
+	~mtl_contents(){};
+
+	const string getTextureFilename(string material_name) const;
+	const map<string, material_data> getMaterials() const { return materials; }
+
+private:
+	vector<string> error_log;
+	map<string, material_data> materials;
 };
 
 #endif

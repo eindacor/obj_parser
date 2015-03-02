@@ -12,8 +12,9 @@ void vertex_data::setVertexData()
 		face_data.push_back(*it);
 }
 
-void mesh_data::setMeshData()
+const vector<float> mesh_data::getInterleaveData() const
 {
+	vector<float> interleave_data;
 	for (vector< vector<vertex_data> >::const_iterator faces_it = faces.begin();
 		faces_it != faces.end(); faces_it++)
 	{
@@ -32,6 +33,11 @@ void mesh_data::setMeshData()
 		}
 	}
 
+	return interleave_data;
+}
+
+void mesh_data::setMeshData()
+{
 	if (faces.begin() != faces.end())
 	{
 		interleave_stride = faces.begin()->begin()->getStride();
@@ -41,96 +47,86 @@ void mesh_data::setMeshData()
 		v_count = faces.begin()->begin()->getVCount();
 		vt_count = faces.begin()->begin()->getVTCount();
 		vn_count = faces.begin()->begin()->getVNCount();
+
+		total_float_count = (v_count + vt_count + vn_count) * faces.size();
 	}
 }
 
 obj_contents::obj_contents(const char* obj_file)
 {
+	v_index_counter = 1;
+	vt_index_counter = 1;
+	vn_index_counter = 1;
+	vp_index_counter = 1;
+
 	fstream file;
 	file.open(obj_file, std::ifstream::in);
+
+	if (!file.is_open())
+	{
+		string error = "unable to open obj file: ";
+		error += obj_file;
+		std::cout << error << std::endl;
+		error_log.push_back(error);
+		return;
+	}
 
 	bool end_of_vertex_data = false;
 
 	meshes.push_back(mesh_data());
 	vector<mesh_data>::iterator current_mesh = meshes.begin();
 
-	int v_counter = 1;
-	int vt_counter = 1;
-	int vn_counter = 1;
-	int vp_counter = 1;
-
-	vector<OBJ_DATA_TYPE> index_order;
+	vector<DATA_TYPE> index_order;
 
 	while (!file.eof())
 	{
-		OBJ_DATA_TYPE type = NOT_SET;
-
 		string line;
 		std::getline(file, line, '\n');
 
-		switch (line[0])
+		DATA_TYPE type = getDataType(line);
+
+		if (type == UNDEFINED)
+			continue;
+
+		//"g" prefix indicates the previous geometry data has ended
+		else if (type == OBJ_G)
 		{
-		case 'v':
-			if (end_of_vertex_data)
-			{		
-				meshes.push_back(mesh_data());
-				current_mesh = meshes.end() - 1;
-				end_of_vertex_data = false;
-				index_order.clear();
-			}
-
-			if (line[1] == ' ')
-				type = V_DATA;
-
-			if (line[1] == 't')
-				type = VT_DATA;
-
-			if (line[1] == 'n')
-				type = VN_DATA;
-
-			if (line[1] == 'p')
-				type = VP_DATA;
-
-			break;
-
-		case 'f': type = F_DATA; break;
-		case '#': continue;
-		case '\n': continue;
-		case 's': continue;
-		case 'g': end_of_vertex_data = true; continue;
-		default: continue;
+			current_mesh->setMeshName(extractName(line));
+			end_of_vertex_data = true;
+			continue;
 		}
 
-		if (type != F_DATA && type != NOT_SET)
+		if (type == OBJ_USEMTL)
+		{
+			current_mesh->setMaterialName(extractName(line));
+			continue;
+		}
+
+		if (type == OBJ_MTLLIB)
+		{
+			mtl_filename = extractName(line);
+			continue;
+		}
+
+		//detects if a new geometry is starting, resets params and operates on new mesh
+		if (type == OBJ_V && end_of_vertex_data)
+		{
+			meshes.push_back(mesh_data());
+			current_mesh = meshes.end() - 1;
+			end_of_vertex_data = false;
+			index_order.clear();
+		}
+
+		if (type == OBJ_V || type == OBJ_VT || type == OBJ_VN || type == OBJ_VP)
 		{
 			if (std::find(index_order.begin(), index_order.end(), type) == index_order.end())
 				index_order.push_back(type);
 
 			vector<float> floats(extractFloats(line));
-
-			switch (type)
-			{
-			case V_DATA:
-				raw_v_data[v_counter] = floats;
-				v_counter++;
-				break;
-			case VT_DATA:
-				raw_vt_data[vt_counter] = floats;
-				vt_counter++;
-				break;
-			case VN_DATA:
-				raw_vn_data[vn_counter] = floats;
-				vn_counter++;
-				break;
-			case VP_DATA:
-				raw_vp_data[vp_counter] = floats;
-				vp_counter++;
-				break;
-			default: break;
-			}
+			addRawData(floats, type);
 		}
 
-		else if (type == F_DATA)
+		else if (type == OBJ_F)
 		{
 			//face_data contains the index list for each line (each face)
 			//	1/1/1  2/2/2  3/3/3
@@ -152,19 +148,19 @@ obj_contents::obj_contents(const char* obj_file)
 				{
 					switch (index_order[n])
 					{
-					case V_DATA:
+					case OBJ_V:
 						v_index = extracted_face_data[i][n];
 						position_data = raw_v_data.at(v_index);
 						break;
-					case VT_DATA:
+					case OBJ_VT:
 						vt_index = extracted_face_data[i][n];
 						uv_data = raw_vt_data.at(vt_index);
 						break;
-					case VN_DATA:
+					case OBJ_VN:
 						vn_index = extracted_face_data[i][n];
 						normal_data = raw_vn_data.at(vn_index);
 						break;
-					case VP_DATA:
+					case OBJ_VP:
 						vp_index = extracted_face_data[i][n];
 						break;
 					default: throw;
@@ -210,6 +206,30 @@ obj_contents::obj_contents(const char* obj_file)
 
 	for (vector<mesh_data>::iterator it = meshes.begin(); it != meshes.end(); it++)
 		it->setMeshData();
+}
+
+void obj_contents::addRawData(const vector<float> &floats, DATA_TYPE dt)
+{
+	switch (dt)
+	{
+	case OBJ_V:
+		raw_v_data[v_index_counter] = floats;
+		v_index_counter++;
+		break;
+	case OBJ_VT:
+		raw_vt_data[vt_index_counter] = floats;
+		vt_index_counter++;
+		break;
+	case OBJ_VN:
+		raw_vn_data[vn_index_counter] = floats;
+		vn_index_counter++;
+		break;
+	case OBJ_VP:
+		raw_vp_data[vp_index_counter] = floats;
+		vp_index_counter++;
+		break;
+	default: break;
+	}
 }
 
 const vector<float> extractFloats(const string &s)
@@ -347,8 +367,180 @@ const vector< vector<int> > extractFaceSequence(const string &s)
 	return index_list;
 }
 
+const string extractName(const string &line)
+{
+	string name;
+	bool name_begin = false;
+	for (int i = 0; i < line.size(); i++)
+	{
+		if (line[i] == ' ' && !name_begin)
+		{
+			name_begin = true;
+			continue;
+		}
+
+		else if (name_begin)
+			name += line[i];
+	}
+
+	return name;
+}
+
+const DATA_TYPE getDataType(const string &line)
+{
+	string prefix;
+	for (int i = 0; i < line.size(); i++)
+	{
+		if (line[i] != ' ')
+			prefix += line[i];
+
+		else break;
+	}
+
+	if (prefix == "mtllib")
+		return OBJ_MTLLIB;
+
+	if (prefix == "v")
+		return OBJ_V;
+
+	if (prefix == "vt")
+		return OBJ_VT;
+
+	if (prefix == "vn")
+		return OBJ_VN;
+
+	if (prefix == "vp")
+		return OBJ_VP;
+
+	if (prefix == "f")
+		return OBJ_F;
+
+	if (prefix == "g")
+		return OBJ_G;
+
+	if (prefix == "usemtl")
+		return OBJ_USEMTL;
+
+	if (prefix == "newmtl")
+		return MTL_NEWMTL;
+
+	if (prefix == "Ka")
+		return MTL_KA;
+
+	if (prefix == "Kd")
+		return MTL_KD;
+
+	if (prefix == "Ks")
+		return MTL_KS;
+
+	if (prefix == "Ns")
+		return MTL_NS;
+
+	if (prefix == "Tr" || prefix == "d" || prefix == "Tf")
+		return MTL_D;
+
+	if (prefix == "map_Ka")
+		return MTL_MAP_KA;
+
+	if (prefix == "map_Kd")
+		return MTL_MAP_KD;
+
+	if (prefix == "map_Ks")
+		return MTL_MAP_KS;
+
+	if (prefix == "map_Ns")
+		return MTL_MAP_NS;
+
+	if (prefix == "map_d")
+		return MTL_MAP_D;
+
+	if (prefix == "map_bump" || prefix == "bump")
+		return MTL_MAP_BUMP;
+
+	if (prefix == "disp")
+		return MTL_MAP_DISP;
+
+	if (prefix == "decal")
+		return MTL_DECAL;
+
+	return UNDEFINED;
+}
+
 const vector<mesh_data> generateMeshes(const char* file_path)
 {
 	obj_contents contents(file_path);
 	return contents.getMeshes();
+}
+
+const map<string, material_data> generateMaterials(const char* file_path)
+{
+	mtl_contents contents(file_path);
+	return contents.getMaterials();
+}
+
+const vector<float> material_data::getData(DATA_TYPE dt) const
+{
+	vector<float> default_values = { 0.0f, 0.0f, 0.0f, 0.0f };
+	map<DATA_TYPE, vector<float> >::const_iterator it = data.find(dt);
+	if (it == data.end())
+		return default_values;
+
+	else return it->second;
+}
+
+mtl_contents::mtl_contents(const char* mtl_file)
+{
+	fstream file;
+	file.open(mtl_file, std::ifstream::in);
+
+	if (!file.is_open())
+	{
+		string error = "unable to open mtl file: ";
+		error += mtl_file;
+		std::cout << error << std::endl;
+		error_log.push_back(error);
+		return;
+	}
+
+	bool data_set = false;
+
+	map<string, material_data>::iterator current_material;
+
+	while (!file.eof())
+	{
+		string line;
+		std::getline(file, line, '\n');
+
+		DATA_TYPE type = getDataType(line);
+
+		if (type == UNDEFINED)
+			continue;
+
+		if (type == MTL_NEWMTL)
+		{
+			string mtl_name = extractName(line);
+			materials[mtl_name] = material_data(mtl_name);
+			current_material = materials.find(mtl_name);
+		}
+
+		if (type == MTL_KD || type == MTL_KA || type == MTL_D)
+		{
+			vector<float> floats(extractFloats(line));
+			current_material->second.setData(type, floats);
+		}
+
+		if (type == MTL_MAP_KD)
+			current_material->second.setTextureFilename(extractName(line));
+	}
+
+	file.close();
+}
+
+const string mtl_contents::getTextureFilename(string material_name) const
+{
+	map<string, material_data>::const_iterator it = materials.find(material_name);
+	if (it == materials.end())
+		return "";
+
+	else return it->second.getTextureFilename();
 }
