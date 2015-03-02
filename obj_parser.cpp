@@ -44,11 +44,11 @@ void mesh_data::setMeshData()
 		interleave_vt_offset = faces.begin()->begin()->getUVOffset();
 		interleave_vn_offset = faces.begin()->begin()->getNOffset();
 
-		v_count = faces.begin()->begin()->getVCount();
-		vt_count = faces.begin()->begin()->getVTCount();
-		vn_count = faces.begin()->begin()->getVNCount();
+		v_size = faces.begin()->begin()->getVSize();
+		vt_size = faces.begin()->begin()->getVTSize();
+		vn_size = faces.begin()->begin()->getVNSize();
 
-		total_float_count = (v_count + vt_count + vn_count) * faces.size();
+		total_float_count = (v_size + vt_size + vn_size) * faces.size();
 	}
 }
 
@@ -169,14 +169,10 @@ obj_contents::obj_contents(const char* obj_file)
 
 				vertex_data vert(position_data, uv_data, normal_data);
 				extracted_vertices.push_back(vert);
-
-				current_mesh->addVData(position_data);
-				current_mesh->addVTData(uv_data);
-				current_mesh->addVNData(normal_data);
 			}
 
 			//from extracted vertices, create 1 face for triangulated meshes,
-			//separate quadrangular meshes into 2 separate faces
+			//separate quadrangulated meshes into 2 separate faces
 			if (extracted_face_data.size() == 3)
 			{
 				vector<vertex_data> face;
@@ -184,6 +180,14 @@ obj_contents::obj_contents(const char* obj_file)
 				face.push_back(extracted_vertices[1]);
 				face.push_back(extracted_vertices[2]);
 				current_mesh->addFace(face);
+
+				//add data to each respective all_data vector, for retrieving individual sets
+				for (vector<vertex_data>::iterator it = face.begin(); it != face.end(); it++)
+				{
+					current_mesh->addVData(it->getVData());
+					current_mesh->addVTData(it->getVTData());
+					current_mesh->addVNData(it->getVNData());
+				}
 			}
 
 			else if (extracted_face_data.size() == 4)
@@ -194,11 +198,25 @@ obj_contents::obj_contents(const char* obj_file)
 				face1.push_back(extracted_vertices[3]);
 				current_mesh->addFace(face1);
 
+				for (vector<vertex_data>::iterator it = face1.begin(); it != face1.end(); it++)
+				{
+					current_mesh->addVData(it->getVData());
+					current_mesh->addVTData(it->getVTData());
+					current_mesh->addVNData(it->getVNData());
+				}
+
 				vector<vertex_data> face2;
 				face2.push_back(extracted_vertices[1]);
 				face2.push_back(extracted_vertices[2]);
 				face2.push_back(extracted_vertices[3]);
 				current_mesh->addFace(face2);
+
+				for (vector<vertex_data>::iterator it = face2.begin(); it != face2.end(); it++)
+				{
+					current_mesh->addVData(it->getVData());
+					current_mesh->addVTData(it->getVTData());
+					current_mesh->addVNData(it->getVNData());
+				}
 			}
 		}
 	}

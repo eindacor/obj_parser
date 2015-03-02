@@ -43,9 +43,9 @@ public:
 	const int getUVOffset() const { return v_data.size() * sizeof(float); }
 	const int getNOffset() const { return getUVOffset() + (vt_data.size() * sizeof(float)); }
 	const int getStride() const { return face_data.size() * sizeof(float); }
-	const int getVCount() const { return v_data.size(); }
-	const int getVTCount() const { return vt_data.size(); }
-	const int getVNCount() const { return vn_data.size(); }
+	const int getVSize() const { return v_data.size(); }
+	const int getVTSize() const { return vt_data.size(); }
+	const int getVNSize() const { return vn_data.size(); }
 	const vector<float> getVData() const { return v_data; }
 	const vector<float> getVTData() const { return vt_data; }
 	const vector<float> getVNData() const { return vn_data; }
@@ -87,9 +87,9 @@ public:
 	const vector<float> getInterleaveData() const;
 
 	//returns # of floats per vertex type
-	const int getVCount() const { return v_count; }
-	const int getVTCount() const { return vt_count; }
-	const int getVNCount() const { return vn_count; }
+	const int getVSize() const { return v_size; }
+	const int getVTSize() const { return vt_size; }
+	const int getVNSize() const { return vn_size; }
 	//returns # of vertices stored
 	const int getVertexCount() const { return vertex_count; }
 	//returns # of faces stored
@@ -100,6 +100,8 @@ public:
 	const vector<float> getVTData() const { return all_vt_data; }
 	const vector<float> getVNData() const { return all_vn_data; }
 	const vector<float> getVPData() const { return all_vp_data; }
+
+	const vector<float> getData(DATA_TYPE) const;
 
 	void setMeshData();
 
@@ -123,10 +125,10 @@ private:
 	int interleave_vn_offset;
 
 	//counts floats per vertex of each type (3 = vec3, 4 = vec4)
-	int v_count;
-	int vt_count;
-	int vn_count;
-	int vp_count;
+	int v_size;
+	int vt_size;
+	int vn_size;
+	int vp_size;
 	//# of vertices are stored total
 	int vertex_count;
 	//# of faces are stored total
