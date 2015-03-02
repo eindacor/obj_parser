@@ -15,6 +15,7 @@ void vertex_data::setVertexData()
 const vector<float> mesh_data::getInterleaveData() const
 {
 	vector<float> interleave_data;
+	interleave_data.reserve(total_float_count);
 	for (vector< vector<vertex_data> >::const_iterator faces_it = faces.begin();
 		faces_it != faces.end(); faces_it++)
 	{
@@ -32,7 +33,6 @@ const vector<float> mesh_data::getInterleaveData() const
 			interleave_data.insert(interleave_data.end(), all_face_data.begin(), all_face_data.end());
 		}
 	}
-
 	return interleave_data;
 }
 
@@ -78,6 +78,8 @@ obj_contents::obj_contents(const char* obj_file)
 
 	vector<DATA_TYPE> index_order;
 
+	string current_material;
+
 	while (!file.eof())
 	{
 		string line;
@@ -98,7 +100,8 @@ obj_contents::obj_contents(const char* obj_file)
 
 		if (type == OBJ_USEMTL)
 		{
-			current_mesh->setMaterialName(extractName(line));
+			current_material = extractName(line);
+			current_mesh->setMaterialName(current_material);
 			continue;
 		}
 
@@ -113,6 +116,7 @@ obj_contents::obj_contents(const char* obj_file)
 		{
 			meshes.push_back(mesh_data());
 			current_mesh = meshes.end() - 1;
+			current_mesh->setMaterialName(current_material);
 			end_of_vertex_data = false;
 			index_order.clear();
 		}
@@ -146,6 +150,9 @@ obj_contents::obj_contents(const char* obj_file)
 
 				for (int n = 0; n < index_order.size(); n++)
 				{
+					if (v_index = extracted_face_data[i][n] == 0)
+						continue;
+
 					switch (index_order[n])
 					{
 					case OBJ_V:
