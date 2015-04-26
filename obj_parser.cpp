@@ -25,7 +25,7 @@ const vector<float> mesh_data::getInterleaveData() const
 		//		normal.x, normal.y, normal.z,
 		//	bracketed values are only included if they were in the original obj file
 
-		//for each vertex in each face, pass the stored, ordered data to obj_data
+		//for each vertex in each face, pass the stored, ordered data to interleave_data
 		for (vector<vertex_data>::const_iterator vertex_it = faces_it->begin();
 			vertex_it != faces_it->end(); vertex_it++)
 		{
