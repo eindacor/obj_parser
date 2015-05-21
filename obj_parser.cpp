@@ -36,6 +36,70 @@ const vector<float> mesh_data::getInterleaveData() const
 	return interleave_data;
 }
 
+const vector<float> mesh_data::getIndexedInterleaveData(vector<unsigned int> &indices) const
+{
+	vector<float> interleaved_vertices = getInterleaveData();
+	vector<float> unique_vertices;
+	indices.clear();
+
+	map<unsigned, vector<float> > index_map;
+	
+	vector<float> current_index;
+	unsigned int stride_floats = interleave_stride / sizeof(float);
+	current_index.reserve(stride_floats);
+	unsigned int index_count = 0;
+	for (int i = 0; i < interleaved_vertices.size(); i++)
+	{
+		current_index.push_back(interleaved_vertices.at(i));
+
+		if (current_index.size() == stride_floats)
+		{
+			if (index_map.size() == 0)
+			{
+				unique_vertices.insert(unique_vertices.end(), current_index.begin(), current_index.end());
+				index_map.insert(std::pair<unsigned int, vector<float> >(index_count, current_index));
+				indices.push_back(index_count);
+				index_count++;
+			}
+
+			else
+			{
+				bool match_found = false;
+				for (auto mapped_index : index_map)
+				{
+					for (int j = 0; j < stride_floats; j++)
+					{
+						float difference = current_index.at(j) - mapped_index.second.at(j);
+						if (abs(difference) > .00001f)
+							break;
+
+						if (j == stride_floats - 1)
+						{
+							match_found = true;
+							indices.push_back(mapped_index.first);
+						}
+					}
+
+					if (match_found)
+						break;
+				}
+
+				if (!match_found)
+				{
+					unique_vertices.insert(unique_vertices.end(), current_index.begin(), current_index.end());
+					index_map.insert(std::pair<unsigned int, vector<float> >(index_count, current_index));
+					indices.push_back(index_count);
+					index_count++;
+				}
+			}
+
+			current_index.clear();
+		}
+	}
+
+	return unique_vertices;
+}
+
 void mesh_data::setMeshData()
 {
 	if (faces.begin() != faces.end())

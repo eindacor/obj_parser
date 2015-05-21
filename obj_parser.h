@@ -85,6 +85,7 @@ public:
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
 	const vector<float> getInterleaveData() const;
+	const vector<float> getIndexedInterleaveData(vector<unsigned> &indices) const;
 
 	//returns # of floats per vertex type
 	const int getVSize() const { return v_size; }
