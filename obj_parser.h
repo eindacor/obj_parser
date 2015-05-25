@@ -7,6 +7,7 @@
 #include <map>
 #include <math.h>
 #include <iostream>
+#include <glm.hpp>
 
 using std::string;
 using std::map;
@@ -42,7 +43,7 @@ public:
 
 	const int getUVOffset() const { return v_data.size() * sizeof(float); }
 	const int getNOffset() const { return getUVOffset() + (vt_data.size() * sizeof(float)); }
-	const int getStride() const { return face_data.size() * sizeof(float); }
+	const int getStride() const { return all_data.size() * sizeof(float); }
 	const int getVSize() const { return v_data.size(); }
 	const int getVTSize() const { return vt_data.size(); }
 	const int getVNSize() const { return vn_data.size(); }
@@ -50,16 +51,35 @@ public:
 	const vector<float> getVTData() const { return vt_data; }
 	const vector<float> getVNData() const { return vn_data; }
 
-	vector<float> getData() const { return face_data; }
+	//modifyPosition does not affect normals
+	void modifyPosition(const glm::mat4 &translation_matrix);
+	//rotate modifies position data and normals
+	void rotate(const glm::mat4 &rotation_matrix);
+
+	vector<float> getAllData() const { return all_data; }
+
+	bool operator == (const vertex_data &other);
+	bool operator != (const vertex_data &other) { return !((*this) == other); }
+
+	glm::vec2 xy;
+	glm::vec3 xyz;
+	glm::vec4 xyzw;
+	glm::vec2 uv;
+	float x, y, z, w;
+	float u, v;
+
+	glm::vec3 n_xyz;
+	float n_x, n_y, n_z;
 
 private:
+	
 	void setVertexData();
 	vector<float> v_data;
 	vector<float> vt_data;
 	vector<float> vn_data;
 	vector<float> vp_data;
 
-	vector<float> face_data;
+	vector<float> all_data;
 };
 
 class mesh_data
@@ -79,13 +99,16 @@ public:
 	void addVTData(const vector<float> &data) { all_vt_data.insert(all_vt_data.end(), data.begin(), data.end()); }
 	void addVNData(const vector<float> &data) { all_vn_data.insert(all_vn_data.end(), data.begin(), data.end()); }
 	void addVPData(const vector<float> &data) { all_vp_data.insert(all_vp_data.end(), data.begin(), data.end()); }
-	void addFace(vector<vertex_data> &data) { faces.push_back(data); total_face_count++; vertex_count += data.size(); }
+	void addFace(const vector<vertex_data> &data);
 
 	const int getInterleaveStride() const { return interleave_stride; }
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
 	const vector<float> getInterleaveData() const;
-	const vector<float> getIndexedInterleaveData(vector<unsigned> &indices) const;
+	const vector<float> getIndexedInterleaveData(vector<unsigned int> &indices) const;
+
+	vector< vector<float> > getTriangles();
+	vector< vector<float> > getQuads();
 
 	//returns # of floats per vertex type
 	const int getVSize() const { return v_size; }
@@ -104,11 +127,23 @@ public:
 
 	const vector<float> getData(DATA_TYPE) const;
 
+	//modifyPosition does not affect normals
+	void modifyPosition(const glm::mat4 &translation_matrix);
+	//rotate modifies position data and normals
+	void rotate(const glm::mat4 &rotation_matrix);
+
+	vector< std::pair<glm::vec4, glm::vec4> > getMeshEdgesVec4() const;
+	vector< std::pair<glm::vec3, glm::vec3> > getMeshEdgesVec3() const;
+	vector< vector<glm::vec4> >getMeshTrianglesVec4() const;
+	vector< vector<glm::vec3> >getMeshTrianglesVec3() const;
+
 	void setMeshData();
 
 private:
 	//vector of faces, each face is a vector of vertices
 	vector< vector<vertex_data> > faces;
+	map<unsigned int, vertex_data > vertex_map;
+	vector<unsigned int> element_index;
 
 	string mesh_name;
 	string material_name;

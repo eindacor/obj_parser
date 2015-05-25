@@ -1,15 +1,182 @@
 #include "obj_parser.h"
 
+bool vertex_data::operator == (const vertex_data &other)
+{
+	if (getUVOffset() != other.getUVOffset())
+		return false;
+
+	if (getNOffset() != other.getNOffset())
+		return false;
+
+	if (getStride() != other.getStride())
+		return false;
+
+	if (getVSize() != other.getVSize())
+		return false;
+
+	if (getVTSize() != other.getVTSize())
+		return false;
+
+	if (getVNSize() != other.getVNSize())
+		return false;
+
+	vector<float> other_v_data = other.getVData();
+	for (int i = 0; i < v_data.size(); i++)
+	{
+		float difference = v_data.at(i) - other_v_data.at(i);
+		if (abs(difference) > .000001f)
+			return false;
+	}
+
+	vector<float> other_vt_data = other.getVTData();
+	for (int i = 0; i < vt_data.size(); i++)
+	{
+		float difference = vt_data.at(i) - other_vt_data.at(i);
+		if (abs(difference) > .000001f)
+			return false;
+	}
+
+	vector<float> other_vn_data = other.getVNData();
+	for (int i = 0; i < vn_data.size(); i++)
+	{
+		float difference = vn_data.at(i) - other_vn_data.at(i);
+		if (abs(difference) > .000001f)
+			return false;
+	}
+
+	return true;
+}
+
 void vertex_data::setVertexData()
 {
-	for (vector<float>::const_iterator it = v_data.begin(); it != v_data.end(); it++)
-		face_data.push_back(*it);
+	all_data.insert(all_data.end(), v_data.begin(), v_data.end());
+	all_data.insert(all_data.end(), vt_data.begin(), vt_data.end());
+	all_data.insert(all_data.end(), vn_data.begin(), vn_data.end());
+	
+	if (v_data.size() > 2)
+	{
+		x = v_data.at(0);
+		y = v_data.at(1);
+		z = v_data.at(2);
+		xy = glm::vec2(v_data.at(0), v_data.at(1));
+		xyz = glm::vec3(v_data.at(0), v_data.at(1), v_data.at(2));
 
-	for (vector<float>::const_iterator it = vt_data.begin(); it != vt_data.end(); it++)
-		face_data.push_back(*it);
+		if (v_data.size() > 3)
+		{
+			w = v_data.at(3);
+			xyzw = glm::vec4(v_data.at(0), v_data.at(1), v_data.at(2), v_data.at(3));
+		}
 
-	for (vector<float>::const_iterator it = vn_data.begin(); it != vn_data.end(); it++)
-		face_data.push_back(*it);
+		else
+		{
+			w = 1.0f;
+			xyzw = glm::vec4(v_data.at(0), v_data.at(1), v_data.at(2), 1.0f);
+		}
+	}
+
+	else
+	{
+		x = 0.0f;
+		y = 0.0f;
+		z = 0.0f;
+		xy = glm::vec2(0.0f, 0.0f);
+		xyz = glm::vec3(0.0f, 0.0f, 0.0f);
+		w = 1.0f;
+		xyzw = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	}
+
+	if (vt_data.size() > 0)
+	{
+		u = vt_data.at(0);
+		v = vt_data.at(1);
+		uv = glm::vec2(vt_data.at(0), vt_data.at(1));
+	}
+	
+	else
+	{
+		u = 0.0f;
+		v = 0.0f;
+		uv = glm::vec2(0.0f, 0.0f);
+	}
+
+	if (vn_data.size() > 2)
+	{
+		n_x = vn_data.at(0);
+		n_y = vn_data.at(1);
+		n_z = vn_data.at(2);
+		n_xyz = glm::vec3(vn_data.at(0), vn_data.at(1), vn_data.at(2));
+	}
+
+	else
+	{
+		n_x = 0.0f;
+		n_y = 0.0f;
+		n_z = 0.0f;
+		n_xyz = glm::vec3(0.0f, 0.0f, 0.0f);
+	}
+}
+
+void vertex_data::modifyPosition(const glm::mat4 &translation_matrix)
+{
+	all_data.clear();
+
+	v_data.clear();
+	xyzw = translation_matrix * xyzw;
+	v_data.push_back(xyzw.x);
+	v_data.push_back(xyzw.y);
+	v_data.push_back(xyzw.z);
+	v_data.push_back(xyzw.w);
+
+	setVertexData();
+}
+
+void vertex_data::rotate(const glm::mat4 &rotation_matrix)
+{
+	all_data.clear();
+
+	v_data.clear();
+	xyzw = rotation_matrix * xyzw;
+	v_data.push_back(xyzw.x);
+	v_data.push_back(xyzw.y);
+	v_data.push_back(xyzw.z);
+	v_data.push_back(xyzw.w);
+
+	vn_data.clear();
+	n_xyz = glm::vec3(rotation_matrix * glm::vec4(n_xyz, 1.0f));
+	vn_data.push_back(n_xyz.x);
+	vn_data.push_back(n_xyz.y);
+	vn_data.push_back(n_xyz.z);
+
+	setVertexData();
+}
+
+void mesh_data::addFace(const vector<vertex_data> &data)
+{ 
+	faces.push_back(data); 
+	total_face_count++; 
+	vertex_count += data.size(); 
+
+	for (auto i : data)
+	{
+		bool match_found = false;
+		for (auto j : vertex_map)
+		{
+			if (i == j.second)
+			{
+				element_index.push_back(j.first);
+				match_found = true;
+				break;
+			}
+		}
+
+		if (!match_found)
+		{
+			unsigned int new_index = vertex_map.size();
+			element_index.push_back(new_index);
+			std::pair<unsigned int, vertex_data> to_add(new_index, i);
+			vertex_map.insert(to_add);
+		}
+	}
 }
 
 const vector<float> mesh_data::getInterleaveData() const
@@ -29,7 +196,7 @@ const vector<float> mesh_data::getInterleaveData() const
 		for (vector<vertex_data>::const_iterator vertex_it = faces_it->begin();
 			vertex_it != faces_it->end(); vertex_it++)
 		{
-			vector<float> all_face_data(vertex_it->getData());
+			vector<float> all_face_data(vertex_it->getAllData());
 			interleave_data.insert(interleave_data.end(), all_face_data.begin(), all_face_data.end());
 		}
 	}
@@ -98,6 +265,159 @@ const vector<float> mesh_data::getIndexedInterleaveData(vector<unsigned int> &in
 	}
 
 	return unique_vertices;
+}
+
+void mesh_data::modifyPosition(const glm::mat4 &translation_matrix)
+{
+	all_v_data.clear();
+
+	for (auto i : faces)
+	{
+		for (auto j : i)
+		{
+			j.modifyPosition(translation_matrix);
+			vector<float> j_v_data = j.getVData();
+			all_v_data.insert(all_v_data.end(), j_v_data.begin(), j_v_data.end());
+		}
+	}
+
+	for (auto i : vertex_map)
+		i.second.modifyPosition(translation_matrix);
+}
+
+void mesh_data::rotate(const glm::mat4 &rotation_matrix)
+{
+	all_v_data.clear();
+	all_vn_data.clear();
+
+	for (auto i : faces)
+	{
+		for (auto j : i)
+		{
+			j.rotate(rotation_matrix);
+			vector<float> j_v_data = j.getVData();
+			vector<float> j_vn_data = j.getVNData();
+			all_v_data.insert(all_v_data.end(), j_v_data.begin(), j_v_data.end());
+			all_vn_data.insert(all_vn_data.end(), j_vn_data.begin(), j_vn_data.end());
+		}
+	}
+
+	for (auto i : vertex_map)
+		i.second.rotate(rotation_matrix);
+}
+
+vector< std::pair<glm::vec4, glm::vec4> > mesh_data::getMeshEdgesVec4() const
+{
+	map< int, std::pair<glm::vec4, glm::vec4> > edges;
+	int edge_counter = 0;
+
+	//for each side of each triangle
+	for (auto i : faces)
+	{
+		std::pair<glm::vec4, glm::vec4> edge1(i.at(0).xyzw, i.at(1).xyzw);
+		std::pair<glm::vec4, glm::vec4> edge2(i.at(0).xyzw, i.at(1).xyzw);
+		std::pair<glm::vec4, glm::vec4> edge3(i.at(0).xyzw, i.at(1).xyzw);
+
+		edges.insert(std::pair<int, std::pair<glm::vec4, glm::vec4> >(edge_counter++, edge1));
+		edges.insert(std::pair<int, std::pair<glm::vec4, glm::vec4> >(edge_counter++, edge2));
+		edges.insert(std::pair<int, std::pair<glm::vec4, glm::vec4> >(edge_counter++, edge3));
+	}
+
+	vector<int> unique_edges;
+	vector<int> shared_edges;
+
+	for (auto i : edges)
+	{
+		//verity edge analyzed isn't already identified as shared
+		if (std::find(shared_edges.begin(), shared_edges.end(), i.first) != shared_edges.end())
+			continue;
+
+		std::pair<glm::vec4, glm::vec4> i_edge = i.second;
+
+		bool unique = true;
+
+		for (auto j : edges)
+		{
+			//skip if the edge has already been confirmed as unique or shared
+			if (std::find(shared_edges.begin(), shared_edges.end(), j.first) != shared_edges.end())
+				continue;
+
+			if (std::find(unique_edges.begin(), unique_edges.end(), j.first) != unique_edges.end())
+				continue;
+
+			std::pair<glm::vec4, glm::vec4> j_edge = j.second;
+
+			//if each edge has similar points, in any order, add to shared edges
+			if ((i_edge.second == j_edge.first && i_edge.second == j_edge.second) ||
+				(i_edge.first == j_edge.second && i_edge.second == j_edge.first))
+			{
+				shared_edges.push_back(i.first);
+				shared_edges.push_back(j.first);
+				unique = false;
+				break;
+			}
+		}
+
+		if (unique)
+			unique_edges.push_back(i.first);
+	}
+
+	vector< std::pair<glm::vec4, glm::vec4> > outer_edges;
+
+	for (auto i : unique_edges)
+		outer_edges.push_back(edges.at(i));
+
+	return outer_edges;
+}
+
+vector< std::pair<glm::vec3, glm::vec3> > mesh_data::getMeshEdgesVec3() const
+{
+	vector< std::pair<glm::vec3, glm::vec3> > vec3_data;
+	vector< std::pair<glm::vec4, glm::vec4> > vec4_data = getMeshEdgesVec4();
+
+	for (auto i : vec4_data)
+	{
+		std::pair<glm::vec3, glm::vec3> converted(glm::vec3(i.first), glm::vec3(i.second));
+		vec3_data.push_back(converted);
+	}
+
+	return vec3_data;
+}
+
+vector< vector<glm::vec4> > mesh_data::getMeshTrianglesVec4() const
+{
+	vector< vector<glm::vec4> > triangles;
+
+	for (auto i : faces)
+	{
+		vector<glm::vec4> triangle = {
+			i.at(0).xyzw,
+			i.at(1).xyzw,
+			i.at(2).xyzw
+		};
+
+		triangles.push_back(triangle);
+	}
+
+	return triangles;
+}
+
+vector< vector<glm::vec3> > mesh_data::getMeshTrianglesVec3() const
+{
+	vector< vector<glm::vec3> > triangles;
+
+	for (auto i : faces)
+	{
+		vector<glm::vec3> triangle = {
+			i.at(0).xyz,
+			i.at(1).xyz,
+			i.at(2).xyz
+		};
+
+		triangles.push_back(triangle);
+	}
+
+	return triangles;
 }
 
 void mesh_data::setMeshData()
