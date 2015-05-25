@@ -37,16 +37,30 @@ class vertex_data
 {
 public:
 	vertex_data(const vector<float> &p, const vector<float> &uv, const vector<float> &n) :
-		v_data(p), vt_data(uv), vn_data(n) { setVertexData(); }
+		v_data(p), vt_data(uv), vn_data(n) { 
+		v_count = p.size();
+		vt_count = uv.size();
+		vn_count = n.size();
+		setVertexData();
+
+		if (v_count < 3 || v_count > 4)
+			throw;
+
+		if (vt_count != 0 && vt_count != 2)
+			throw;
+
+		if ((vn_count < 3 || vn_count > 4) && vn_count != 0)
+			throw;
+	}
 
 	~vertex_data(){};
 
 	const int getUVOffset() const { return v_data.size() * sizeof(float); }
 	const int getNOffset() const { return getUVOffset() + (vt_data.size() * sizeof(float)); }
 	const int getStride() const { return all_data.size() * sizeof(float); }
-	const int getVSize() const { return v_data.size(); }
-	const int getVTSize() const { return vt_data.size(); }
-	const int getVNSize() const { return vn_data.size(); }
+	const int getVSize() const { return v_count; }
+	const int getVTSize() const { return vt_count; }
+	const int getVNSize() const { return vn_count; }
 	const vector<float> getVData() const { return v_data; }
 	const vector<float> getVTData() const { return vt_data; }
 	const vector<float> getVNData() const { return vn_data; }
@@ -61,15 +75,18 @@ public:
 	bool operator == (const vertex_data &other);
 	bool operator != (const vertex_data &other) { return !((*this) == other); }
 
+	float x, y, z, w;
 	glm::vec2 xy;
 	glm::vec3 xyz;
 	glm::vec4 xyzw;
-	glm::vec2 uv;
-	float x, y, z, w;
-	float u, v;
 
+	float u, v;
+	glm::vec2 uv;
+	
+	float n_x, n_y, n_z, n_w;
+	glm::vec2 n_xy;
 	glm::vec3 n_xyz;
-	float n_x, n_y, n_z;
+	glm::vec4 n_xyzw;
 
 private:
 	
@@ -80,6 +97,8 @@ private:
 	vector<float> vp_data;
 
 	vector<float> all_data;
+
+	unsigned short v_count, vt_count, vn_count, vp_count;
 };
 
 class mesh_data
@@ -105,7 +124,7 @@ public:
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
 	const vector<float> getInterleaveData() const;
-	const vector<float> getIndexedInterleaveData(vector<unsigned int> &indices) const;
+	void getIndexedVertexData(vector<unsigned int> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const;
 
 	vector< vector<float> > getTriangles();
 	vector< vector<float> > getQuads();

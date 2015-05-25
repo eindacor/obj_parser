@@ -53,7 +53,7 @@ void vertex_data::setVertexData()
 	all_data.insert(all_data.end(), vt_data.begin(), vt_data.end());
 	all_data.insert(all_data.end(), vn_data.begin(), vn_data.end());
 	
-	if (v_data.size() > 2)
+	if (v_data.size() > 0)
 	{
 		x = v_data.at(0);
 		y = v_data.at(1);
@@ -99,12 +99,25 @@ void vertex_data::setVertexData()
 		uv = glm::vec2(0.0f, 0.0f);
 	}
 
-	if (vn_data.size() > 2)
+	if (vn_data.size() > 0)
 	{
 		n_x = vn_data.at(0);
 		n_y = vn_data.at(1);
 		n_z = vn_data.at(2);
+		n_xy = glm::vec2(vn_data.at(0), vn_data.at(1));
 		n_xyz = glm::vec3(vn_data.at(0), vn_data.at(1), vn_data.at(2));
+
+		if (vn_data.size() > 3)
+		{
+			n_w = vn_data.at(3);
+			n_xyzw = glm::vec4(vn_data.at(0), vn_data.at(1), vn_data.at(2), vn_data.at(3));
+		}
+
+		else
+		{
+			n_w = 1.0f;
+			n_xyzw = glm::vec4(vn_data.at(0), vn_data.at(1), vn_data.at(2), 1.0f);
+		}
 	}
 
 	else
@@ -112,7 +125,10 @@ void vertex_data::setVertexData()
 		n_x = 0.0f;
 		n_y = 0.0f;
 		n_z = 0.0f;
+		n_xy = glm::vec2(0.0f, 0.0f);
 		n_xyz = glm::vec3(0.0f, 0.0f, 0.0f);
+		n_w = 1.0f;
+		n_xyzw = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 }
 
@@ -125,7 +141,9 @@ void vertex_data::modifyPosition(const glm::mat4 &translation_matrix)
 	v_data.push_back(xyzw.x);
 	v_data.push_back(xyzw.y);
 	v_data.push_back(xyzw.z);
-	v_data.push_back(xyzw.w);
+
+	if (v_count > 3)
+		v_data.push_back(xyzw.w);
 
 	setVertexData();
 }
@@ -139,13 +157,21 @@ void vertex_data::rotate(const glm::mat4 &rotation_matrix)
 	v_data.push_back(xyzw.x);
 	v_data.push_back(xyzw.y);
 	v_data.push_back(xyzw.z);
-	v_data.push_back(xyzw.w);
+	
+	if (v_count > 3)
+		v_data.push_back(xyzw.w);
 
-	vn_data.clear();
-	n_xyz = glm::vec3(rotation_matrix * glm::vec4(n_xyz, 1.0f));
-	vn_data.push_back(n_xyz.x);
-	vn_data.push_back(n_xyz.y);
-	vn_data.push_back(n_xyz.z);
+	if (vn_count > 0)
+	{
+		vn_data.clear();
+		n_xyzw = rotation_matrix * n_xyzw;
+		vn_data.push_back(n_xyzw.x);
+		vn_data.push_back(n_xyzw.y);
+		vn_data.push_back(n_xyzw.z);
+
+		if (vn_count > 3)
+			vn_data.push_back(n_xyzw.w);
+	}
 
 	setVertexData();
 }
@@ -203,68 +229,52 @@ const vector<float> mesh_data::getInterleaveData() const
 	return interleave_data;
 }
 
-const vector<float> mesh_data::getIndexedInterleaveData(vector<unsigned int> &indices) const
+void mesh_data::getIndexedVertexData(vector<unsigned int> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const
 {
 	vector<float> interleaved_vertices = getInterleaveData();
-	vector<float> unique_vertices;
 	indices.clear();
-
-	map<unsigned, vector<float> > index_map;
+	v_data.clear();
+	vt_data.clear();
+	vn_data.clear();
 	
-	vector<float> current_index;
-	unsigned int stride_floats = interleave_stride / sizeof(float);
-	current_index.reserve(stride_floats);
-	unsigned int index_count = 0;
-	for (int i = 0; i < interleaved_vertices.size(); i++)
+	vector<vertex_data> all_vertices;
+
+	for (auto i : faces)
 	{
-		current_index.push_back(interleaved_vertices.at(i));
-
-		if (current_index.size() == stride_floats)
-		{
-			if (index_map.size() == 0)
-			{
-				unique_vertices.insert(unique_vertices.end(), current_index.begin(), current_index.end());
-				index_map.insert(std::pair<unsigned int, vector<float> >(index_count, current_index));
-				indices.push_back(index_count);
-				index_count++;
-			}
-
-			else
-			{
-				bool match_found = false;
-				for (auto mapped_index : index_map)
-				{
-					for (int j = 0; j < stride_floats; j++)
-					{
-						float difference = current_index.at(j) - mapped_index.second.at(j);
-						if (abs(difference) > .00001f)
-							break;
-
-						if (j == stride_floats - 1)
-						{
-							match_found = true;
-							indices.push_back(mapped_index.first);
-						}
-					}
-
-					if (match_found)
-						break;
-				}
-
-				if (!match_found)
-				{
-					unique_vertices.insert(unique_vertices.end(), current_index.begin(), current_index.end());
-					index_map.insert(std::pair<unsigned int, vector<float> >(index_count, current_index));
-					indices.push_back(index_count);
-					index_count++;
-				}
-			}
-
-			current_index.clear();
-		}
+		all_vertices.push_back(i.at(0));
+		all_vertices.push_back(i.at(1));
+		all_vertices.push_back(i.at(2));
 	}
 
-	return unique_vertices;
+	map<unsigned int, vertex_data > vertex_map;
+
+	for (auto vertex : all_vertices)
+	{
+		bool match_found = false;
+		for (auto i : vertex_map)
+		{
+			if (vertex == i.second)
+			{
+				match_found = true;
+				indices.push_back(i.first);
+				break;
+			}
+		}
+
+		if (!match_found)
+		{
+			unsigned int new_index = vertex_map.size();
+			indices.push_back(new_index);
+			vector<float> v_data_to_add = vertex.getVData();
+			vector<float> vt_data_to_add = vertex.getVTData();
+			vector<float> vn_data_to_add = vertex.getVNData();
+			v_data.insert(v_data.end(), v_data_to_add.begin(), v_data_to_add.end());
+			vt_data.insert(vt_data.end(), vt_data_to_add.begin(), vt_data_to_add.end());
+			vn_data.insert(vn_data.end(), vn_data_to_add.begin(), vn_data_to_add.end());
+
+			vertex_map.insert(std::pair<unsigned int, vertex_data>(new_index, vertex));
+		}
+	}
 }
 
 void mesh_data::modifyPosition(const glm::mat4 &translation_matrix)
