@@ -125,6 +125,7 @@ public:
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
 	const vector<float> getInterleaveData() const;
 	void getIndexedVertexData(vector<unsigned int> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const;
+	const vector<float> getIndexedVertexData(vector<unsigned int> &indices) const;
 
 	vector< vector<float> > getTriangles();
 	vector< vector<float> > getQuads();
