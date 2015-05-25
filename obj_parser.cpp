@@ -277,17 +277,60 @@ void mesh_data::getIndexedVertexData(vector<unsigned int> &indices, vector<float
 	}
 }
 
+const vector<float> mesh_data::getIndexedVertexData(vector<unsigned int> &indices) const
+{
+	vector<float> unique_vertices;
+	vector<float> interleaved_vertices = getInterleaveData();
+	indices.clear();
+
+	vector<vertex_data> all_vertices;
+
+	for (auto i : faces)
+	{
+		all_vertices.push_back(i.at(0));
+		all_vertices.push_back(i.at(1));
+		all_vertices.push_back(i.at(2));
+	}
+
+	map<unsigned int, vertex_data > vertex_map;
+
+	for (auto vertex : all_vertices)
+	{
+		bool match_found = false;
+		for (auto i : vertex_map)
+		{
+			if (vertex == i.second)
+			{
+				match_found = true;
+				indices.push_back(i.first);
+				break;
+			}
+		}
+
+		if (!match_found)
+		{
+			unsigned int new_index = vertex_map.size();
+			indices.push_back(new_index);
+			vector<float> data_to_add = vertex.getAllData();		
+			unique_vertices.insert(unique_vertices.end(), data_to_add.begin(), data_to_add.end());
+			vertex_map.insert(std::pair<unsigned int, vertex_data>(new_index, vertex));
+		}
+	}
+
+	return unique_vertices;
+}
+
 void mesh_data::modifyPosition(const glm::mat4 &translation_matrix)
 {
 	all_v_data.clear();
 
-	for (auto i : faces)
+	for (auto &face : faces)
 	{
-		for (auto j : i)
+		for (auto &vertex : face)
 		{
-			j.modifyPosition(translation_matrix);
-			vector<float> j_v_data = j.getVData();
-			all_v_data.insert(all_v_data.end(), j_v_data.begin(), j_v_data.end());
+			vertex.modifyPosition(translation_matrix);
+			vector<float> vertex_v_data = vertex.getVData();
+			all_v_data.insert(all_v_data.end(), vertex_v_data.begin(), vertex_v_data.end());
 		}
 	}
 
@@ -300,15 +343,15 @@ void mesh_data::rotate(const glm::mat4 &rotation_matrix)
 	all_v_data.clear();
 	all_vn_data.clear();
 
-	for (auto i : faces)
+	for (auto &face : faces)
 	{
-		for (auto j : i)
+		for (auto &vertex : face)
 		{
-			j.rotate(rotation_matrix);
-			vector<float> j_v_data = j.getVData();
-			vector<float> j_vn_data = j.getVNData();
-			all_v_data.insert(all_v_data.end(), j_v_data.begin(), j_v_data.end());
-			all_vn_data.insert(all_vn_data.end(), j_vn_data.begin(), j_vn_data.end());
+			vertex.rotate(rotation_matrix);
+			vector<float> vertex_v_data = vertex.getVData();
+			vector<float> vertex_vn_data = vertex.getVNData();
+			all_v_data.insert(all_v_data.end(), vertex_v_data.begin(), vertex_v_data.end());
+			all_vn_data.insert(all_vn_data.end(), vertex_vn_data.begin(), vertex_vn_data.end());
 		}
 	}
 
@@ -325,8 +368,8 @@ vector< std::pair<glm::vec4, glm::vec4> > mesh_data::getMeshEdgesVec4() const
 	for (auto i : faces)
 	{
 		std::pair<glm::vec4, glm::vec4> edge1(i.at(0).xyzw, i.at(1).xyzw);
-		std::pair<glm::vec4, glm::vec4> edge2(i.at(0).xyzw, i.at(1).xyzw);
-		std::pair<glm::vec4, glm::vec4> edge3(i.at(0).xyzw, i.at(1).xyzw);
+		std::pair<glm::vec4, glm::vec4> edge2(i.at(1).xyzw, i.at(2).xyzw);
+		std::pair<glm::vec4, glm::vec4> edge3(i.at(2).xyzw, i.at(0).xyzw);
 
 		edges.insert(std::pair<int, std::pair<glm::vec4, glm::vec4> >(edge_counter++, edge1));
 		edges.insert(std::pair<int, std::pair<glm::vec4, glm::vec4> >(edge_counter++, edge2));
