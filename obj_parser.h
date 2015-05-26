@@ -124,8 +124,8 @@ public:
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
 	const vector<float> getInterleaveData() const;
-	void getIndexedVertexData(vector<unsigned int> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const;
-	const vector<float> getIndexedVertexData(vector<unsigned int> &indices) const;
+	void getIndexedVertexData(vector<unsigned short> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const;
+	const vector<float> getIndexedVertexData(vector<unsigned short> &indices) const;
 
 	vector< vector<float> > getTriangles();
 	vector< vector<float> > getQuads();
@@ -162,8 +162,8 @@ public:
 private:
 	//vector of faces, each face is a vector of vertices
 	vector< vector<vertex_data> > faces;
-	map<unsigned int, vertex_data > vertex_map;
-	vector<unsigned int> element_index;
+	map<unsigned short, vertex_data > vertex_map;
+	vector<unsigned short> element_index;
 
 	string mesh_name;
 	string material_name;

@@ -197,9 +197,9 @@ void mesh_data::addFace(const vector<vertex_data> &data)
 
 		if (!match_found)
 		{
-			unsigned int new_index = vertex_map.size();
+			unsigned short new_index = vertex_map.size();
 			element_index.push_back(new_index);
-			std::pair<unsigned int, vertex_data> to_add(new_index, i);
+			std::pair<unsigned short, vertex_data> to_add(new_index, i);
 			vertex_map.insert(to_add);
 		}
 	}
@@ -229,7 +229,7 @@ const vector<float> mesh_data::getInterleaveData() const
 	return interleave_data;
 }
 
-void mesh_data::getIndexedVertexData(vector<unsigned int> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const
+void mesh_data::getIndexedVertexData(vector<unsigned short> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const
 {
 	vector<float> interleaved_vertices = getInterleaveData();
 	indices.clear();
@@ -246,7 +246,7 @@ void mesh_data::getIndexedVertexData(vector<unsigned int> &indices, vector<float
 		all_vertices.push_back(i.at(2));
 	}
 
-	map<unsigned int, vertex_data > vertex_map;
+	map<unsigned short, vertex_data > vertex_map;
 
 	for (auto vertex : all_vertices)
 	{
@@ -263,7 +263,7 @@ void mesh_data::getIndexedVertexData(vector<unsigned int> &indices, vector<float
 
 		if (!match_found)
 		{
-			unsigned int new_index = vertex_map.size();
+			unsigned short new_index = vertex_map.size();
 			indices.push_back(new_index);
 			vector<float> v_data_to_add = vertex.getVData();
 			vector<float> vt_data_to_add = vertex.getVTData();
@@ -272,12 +272,12 @@ void mesh_data::getIndexedVertexData(vector<unsigned int> &indices, vector<float
 			vt_data.insert(vt_data.end(), vt_data_to_add.begin(), vt_data_to_add.end());
 			vn_data.insert(vn_data.end(), vn_data_to_add.begin(), vn_data_to_add.end());
 
-			vertex_map.insert(std::pair<unsigned int, vertex_data>(new_index, vertex));
+			vertex_map.insert(std::pair<unsigned short, vertex_data>(new_index, vertex));
 		}
 	}
 }
 
-const vector<float> mesh_data::getIndexedVertexData(vector<unsigned int> &indices) const
+const vector<float> mesh_data::getIndexedVertexData(vector<unsigned short> &indices) const
 {
 	vector<float> unique_vertices;
 	vector<float> interleaved_vertices = getInterleaveData();
@@ -292,7 +292,7 @@ const vector<float> mesh_data::getIndexedVertexData(vector<unsigned int> &indice
 		all_vertices.push_back(i.at(2));
 	}
 
-	map<unsigned int, vertex_data > vertex_map;
+	map<unsigned short, vertex_data > vertex_map;
 
 	for (auto vertex : all_vertices)
 	{
@@ -309,11 +309,11 @@ const vector<float> mesh_data::getIndexedVertexData(vector<unsigned int> &indice
 
 		if (!match_found)
 		{
-			unsigned int new_index = vertex_map.size();
+			unsigned short new_index = vertex_map.size();
 			indices.push_back(new_index);
 			vector<float> data_to_add = vertex.getAllData();		
 			unique_vertices.insert(unique_vertices.end(), data_to_add.begin(), data_to_add.end());
-			vertex_map.insert(std::pair<unsigned int, vertex_data>(new_index, vertex));
+			vertex_map.insert(std::pair<unsigned short, vertex_data>(new_index, vertex));
 		}
 	}
 
