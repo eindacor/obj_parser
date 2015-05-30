@@ -147,7 +147,6 @@ void vertex_data::rotate(const glm::mat4 &rotation_matrix)
 	if (v_count > 3)
 		v_data.push_back(xyzw.w);
 
-	/*
 	if (vn_count > 0)
 	{
 		vn_data.clear();
@@ -167,7 +166,6 @@ void vertex_data::rotate(const glm::mat4 &rotation_matrix)
 		vn_data.push_back(n_xyz.y);
 		vn_data.push_back(n_xyz.z);
 	}
-	*/
 
 	setVertexData();
 }
