@@ -49,7 +49,7 @@ public:
 		if (vt_count != 0 && vt_count != 2)
 			throw;
 
-		if ((vn_count < 3 || vn_count > 4) && vn_count != 0)
+		if (vn_count != 3 && vn_count != 0)
 			throw;
 	}
 
@@ -83,10 +83,9 @@ public:
 	float u, v;
 	glm::vec2 uv;
 	
-	float n_x, n_y, n_z, n_w;
+	float n_x, n_y, n_z;
 	glm::vec2 n_xy;
 	glm::vec3 n_xyz;
-	glm::vec4 n_xyzw;
 
 private:
 	

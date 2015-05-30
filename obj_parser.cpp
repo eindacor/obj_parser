@@ -106,18 +106,6 @@ void vertex_data::setVertexData()
 		n_z = vn_data.at(2);
 		n_xy = glm::vec2(vn_data.at(0), vn_data.at(1));
 		n_xyz = glm::vec3(vn_data.at(0), vn_data.at(1), vn_data.at(2));
-
-		if (vn_data.size() > 3)
-		{
-			n_w = vn_data.at(3);
-			n_xyzw = glm::vec4(vn_data.at(0), vn_data.at(1), vn_data.at(2), vn_data.at(3));
-		}
-
-		else
-		{
-			n_w = 1.0f;
-			n_xyzw = glm::vec4(vn_data.at(0), vn_data.at(1), vn_data.at(2), 1.0f);
-		}
 	}
 
 	else
@@ -127,8 +115,6 @@ void vertex_data::setVertexData()
 		n_z = 0.0f;
 		n_xy = glm::vec2(0.0f, 0.0f);
 		n_xyz = glm::vec3(0.0f, 0.0f, 0.0f);
-		n_w = 1.0f;
-		n_xyzw = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 }
 
@@ -161,17 +147,27 @@ void vertex_data::rotate(const glm::mat4 &rotation_matrix)
 	if (v_count > 3)
 		v_data.push_back(xyzw.w);
 
+	/*
 	if (vn_count > 0)
 	{
 		vn_data.clear();
-		n_xyzw = rotation_matrix * n_xyzw;
-		vn_data.push_back(n_xyzw.x);
-		vn_data.push_back(n_xyzw.y);
-		vn_data.push_back(n_xyzw.z);
+		n_xyz = glm::vec3(rotation_matrix * glm::vec4(n_xyz, 1.0f));
 
-		if (vn_count > 3)
-			vn_data.push_back(n_xyzw.w);
+		if (abs(n_xyz.x) < 0.0001f)
+			n_xyz.x = 0.0f;
+
+		if (abs(n_xyz.y) < 0.0001f)
+			n_xyz.y = 0.0f;
+
+		if (abs(n_xyz.z) < 0.0001f)
+			n_xyz.z = 0.0f;
+
+		//n_xyz = glm::normalize(n_xyz);
+		vn_data.push_back(n_xyz.x);
+		vn_data.push_back(n_xyz.y);
+		vn_data.push_back(n_xyz.z);
 	}
+	*/
 
 	setVertexData();
 }
