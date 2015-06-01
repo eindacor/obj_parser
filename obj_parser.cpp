@@ -499,6 +499,7 @@ obj_contents::obj_contents(const char* obj_file)
 		error += obj_file;
 		std::cout << error << std::endl;
 		error_log.push_back(error);
+		file.close();
 		return;
 	}
 
