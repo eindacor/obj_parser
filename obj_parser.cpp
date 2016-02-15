@@ -988,6 +988,16 @@ mtl_contents::mtl_contents(const char* mtl_file)
 
 		if (type == MTL_MAP_KD)
 			current_material->second.setTextureFilename(extractName(line));
+
+		if (type == MTL_MAP_BUMP)
+		{
+			string bumpmap_string = extractName(line);	
+			size_t filename_delimiter = bumpmap_string.find(" -bm ");
+			string extracted_filename = bumpmap_string.substr(0, filename_delimiter);
+			current_material->second.setBumpFilename(extracted_filename);
+			string extracted_intensity = bumpmap_string.substr(filename_delimiter + 4);
+			current_material->second.setBumpValue(std::stof(extracted_intensity, 0));
+		}
 	}
 
 	file.close();

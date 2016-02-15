@@ -242,15 +242,22 @@ public:
 
 	void setMaterialName(string s) { material_name = s; }
 	void setTextureFilename(string s) { texture_filename = s; }
+	void setBumpFilename(string s) { bump_filename = s; }
+	void setBumpValue(float f) { bump_value = f; }
 
 	void setData(DATA_TYPE dt, vector<float> floats) { data[dt] = floats; }
 
 	const string getTextureFilename() const { return texture_filename; }
+	const string getBumpFilename() const { return bump_filename; }
+	const float getBumpValue() const { return bump_value; }
 	const string getMaterialName() const { return material_name; }
 	const vector<float> getData(DATA_TYPE dt) const;
 private:
 	string material_name;
 	string texture_filename;
+	string bump_filename;
+
+	float bump_value = 0.5;
 
 	map<DATA_TYPE, vector<float> > data;
 };
