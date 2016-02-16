@@ -118,6 +118,8 @@ public:
 	void addVNData(const vector<float> &data) { all_vn_data.insert(all_vn_data.end(), data.begin(), data.end()); }
 	void addVPData(const vector<float> &data) { all_vp_data.insert(all_vp_data.end(), data.begin(), data.end()); }
 	void addFace(const vector<vertex_data> &data);
+	void addTangentBitangent(const vector<glm::vec3> &tb);
+	vector<glm::vec3> calcTangentBitangent(const vector<vertex_data> &face_data);
 
 	const int getInterleaveStride() const { return interleave_stride; }
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
@@ -163,6 +165,9 @@ private:
 	vector< vector<vertex_data> > faces;
 	map<unsigned short, vertex_data > vertex_map;
 	vector<unsigned short> element_index;
+	
+	vector<glm::vec3> tangents;
+	vector<glm::vec3> bitangents;
 
 	string mesh_name;
 	string material_name;
@@ -216,6 +221,7 @@ public:
 
 private:
 	void addRawData(const vector<float> &floats, DATA_TYPE dt);
+
 	//uses vector<float> because # of floats per vertex varies
 	//data direct from obj file, unformatted
 	map<int, vector<float> > raw_v_data;

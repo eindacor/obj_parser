@@ -176,9 +176,20 @@ void mesh_data::addFace(const vector<vertex_data> &data)
 	total_face_count++; 
 	vertex_count += data.size(); 
 
+	//add data to each respective all_data vector, for retrieving individual sets
+	for (vector<vertex_data>::const_iterator it = data.begin(); it != data.end(); it++)
+	{
+		addVData(it->getVData());
+		addVTData(it->getVTData());
+		addVNData(it->getVNData());
+		addTangentBitangent(calcTangentBitangent(data));
+	}
+
 	for (auto i : data)
 	{
 		bool match_found = false;
+
+		//TODO use find methods instead of iterating through all vertices
 		for (auto j : vertex_map)
 		{
 			if (i == j.second)
@@ -196,6 +207,15 @@ void mesh_data::addFace(const vector<vertex_data> &data)
 			std::pair<unsigned short, vertex_data> to_add(new_index, i);
 			vertex_map.insert(to_add);
 		}
+	}
+}
+
+void mesh_data::addTangentBitangent(const vector<glm::vec3> &tb)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		tangents.push_back(tb[0]); 
+		bitangents.push_back(tb[1]);
 	}
 }
 
@@ -618,39 +638,32 @@ obj_contents::obj_contents(const char* obj_file)
 				face.push_back(extracted_vertices[0]);
 				face.push_back(extracted_vertices[1]);
 				face.push_back(extracted_vertices[2]);
-				current_mesh->addFace(face);
 
-				//add data to each respective all_data vector, for retrieving individual sets
-				for (vector<vertex_data>::iterator it = face.begin(); it != face.end(); it++)
-				{
-					current_mesh->addVData(it->getVData());
-					current_mesh->addVTData(it->getVTData());
-					current_mesh->addVNData(it->getVNData());
-				}
+				current_mesh->addFace(face);		
 			}
 
 			else if (extracted_face_data.size() == 4)
 			{
-				vector<vertex_data> face1;
-				face1.push_back(extracted_vertices[0]);
-				face1.push_back(extracted_vertices[1]);
-				face1.push_back(extracted_vertices[3]);
-				current_mesh->addFace(face1);
+				vector<vertex_data> face_a;
+				face_a.push_back(extracted_vertices[0]);
+				face_a.push_back(extracted_vertices[1]);
+				face_a.push_back(extracted_vertices[3]);
+				current_mesh->addFace(face_a);
 
-				for (vector<vertex_data>::iterator it = face1.begin(); it != face1.end(); it++)
+				for (vector<vertex_data>::iterator it = face_a.begin(); it != face_a.end(); it++)
 				{
 					current_mesh->addVData(it->getVData());
 					current_mesh->addVTData(it->getVTData());
 					current_mesh->addVNData(it->getVNData());
 				}
 
-				vector<vertex_data> face2;
-				face2.push_back(extracted_vertices[1]);
-				face2.push_back(extracted_vertices[2]);
-				face2.push_back(extracted_vertices[3]);
-				current_mesh->addFace(face2);
+				vector<vertex_data> face_b;
+				face_b.push_back(extracted_vertices[1]);
+				face_b.push_back(extracted_vertices[2]);
+				face_b.push_back(extracted_vertices[3]);
+				current_mesh->addFace(face_b);
 
-				for (vector<vertex_data>::iterator it = face2.begin(); it != face2.end(); it++)
+				for (vector<vertex_data>::iterator it = face_b.begin(); it != face_b.end(); it++)
 				{
 					current_mesh->addVData(it->getVData());
 					current_mesh->addVTData(it->getVTData());
@@ -663,6 +676,32 @@ obj_contents::obj_contents(const char* obj_file)
 
 	for (vector<mesh_data>::iterator it = meshes.begin(); it != meshes.end(); it++)
 		it->setMeshData();
+}
+vector<glm::vec3> mesh_data::calcTangentBitangent(const vector<vertex_data> &face_data)
+{
+	vertex_data v_data_0 = face_data[0];
+	vertex_data v_data_1 = face_data[1];
+	vertex_data v_data_2 = face_data[2];
+
+	glm::vec3 v0(v_data_0.getVData()[0], v_data_0.getVData()[1], v_data_0.getVData()[2]);
+	glm::vec3 v1(v_data_1.getVData()[0], v_data_1.getVData()[1], v_data_1.getVData()[2]);
+	glm::vec3 v2(v_data_2.getVData()[0], v_data_2.getVData()[1], v_data_2.getVData()[2]);
+
+	glm::vec2 uv0(v_data_0.getVTData()[0], v_data_0.getVTData()[1]);
+	glm::vec2 uv1(v_data_1.getVTData()[0], v_data_1.getVTData()[1]);
+	glm::vec2 uv2(v_data_2.getVTData()[0], v_data_2.getVTData()[1]);
+
+	glm::vec3 deltaPos1 = v1 - v0;
+	glm::vec3 deltaPos2 = v2 - v0;
+
+	glm::vec2 deltaUV1 = uv1 - uv0;
+	glm::vec2 deltaUV2 = uv2 - uv0;
+
+	float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+	glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+	glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+
+	return vector<glm::vec3> {tangent, bitangent};
 }
 
 void obj_contents::addRawData(const vector<float> &floats, DATA_TYPE dt)
