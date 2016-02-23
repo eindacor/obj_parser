@@ -176,13 +176,17 @@ void mesh_data::addFace(const vector<vertex_data> &data)
 	total_face_count++; 
 	vertex_count += data.size(); 
 
+	vector<glm::vec3> tangent_bitangent = calcTangentBitangent(data);
+
 	//add data to each respective all_data vector, for retrieving individual sets
 	for (vector<vertex_data>::const_iterator it = data.begin(); it != data.end(); it++)
 	{
 		addVData(it->getVData());
 		addVTData(it->getVTData());
 		addVNData(it->getVNData());
-		addTangentBitangent(calcTangentBitangent(data));
+
+		//adds tangent/bitangent once for each vertex
+		addTangentBitangent(tangent_bitangent);
 	}
 
 	for (auto i : data)
@@ -196,16 +200,29 @@ void mesh_data::addFace(const vector<vertex_data> &data)
 			{
 				element_index.push_back(j.first);
 				match_found = true;
+
+				//average tangents found with new tangents
+				tangent_map[j.first] += tangent_bitangent[0];
+				bitangent_map[j.first] += tangent_bitangent[1];
+
 				break;
 			}
 		}
 
 		if (!match_found)
 		{
+			//add new index, vertex, tangent, and bitangent
 			unsigned short new_index = vertex_map.size();
 			element_index.push_back(new_index);
-			std::pair<unsigned short, vertex_data> to_add(new_index, i);
-			vertex_map.insert(to_add);
+
+			std::pair<unsigned short, vertex_data> vertex_to_add(new_index, i);
+			vertex_map.insert(vertex_to_add);
+
+			std::pair<unsigned short, glm::vec3> tangent_to_add(new_index, tangent_bitangent[0]);
+			tangent_map.insert(tangent_to_add);
+
+			std::pair<unsigned short, glm::vec3> bitangent_to_add(new_index, tangent_bitangent[1]);
+			bitangent_map.insert(bitangent_to_add);
 		}
 	}
 }
@@ -243,10 +260,10 @@ const vector<float> mesh_data::getInterleaveData() const
 	return interleave_data;
 }
 
-void mesh_data::getIndexedVertexData(vector<unsigned short> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const
+/*
+void mesh_data::getIndexedVertexData(const vector<unsigned short> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const
 {
 	vector<float> interleaved_vertices = getInterleaveData();
-	indices.clear();
 	v_data.clear();
 	vt_data.clear();
 	vn_data.clear();
@@ -290,12 +307,39 @@ void mesh_data::getIndexedVertexData(vector<unsigned short> &indices, vector<flo
 		}
 	}
 }
+*/
+
+const vector<float> mesh_data::getIndexedVertexData() const
+{
+	vector<float> all_data;
+
+	for (const auto vert_pair : vertex_map)
+	{
+		//includes vertex position data, uv data, and normal data
+		vector<float> vertex_data_to_add = (vert_pair.second).getAllData();
+
+		//append tangent data
+		glm::vec3 tangent_data = tangent_map.at(vert_pair.first);
+		vertex_data_to_add.push_back(tangent_data.x);
+		vertex_data_to_add.push_back(tangent_data.y);
+		vertex_data_to_add.push_back(tangent_data.z);
+
+		//append bitangent data
+		glm::vec3 bitangent_data = bitangent_map.at(vert_pair.first);
+		vertex_data_to_add.push_back(bitangent_data.x);
+		vertex_data_to_add.push_back(bitangent_data.y);
+		vertex_data_to_add.push_back(bitangent_data.z);
+
+		all_data.insert(all_data.end(), vertex_data_to_add.begin(), vertex_data_to_add.end());
+	}
+
+	return all_data;
+}
 
 const vector<float> mesh_data::getIndexedVertexData(vector<unsigned short> &indices) const
 {
 	vector<float> unique_vertices;
 	vector<float> interleaved_vertices = getInterleaveData();
-	indices.clear();
 
 	vector<vertex_data> all_vertices;
 

@@ -125,8 +125,14 @@ public:
 	const int getInterleaveVTOffset() const { return interleave_vt_offset; }
 	const int getInterleaveVNOffset() const { return interleave_vn_offset; }
 	const vector<float> getInterleaveData() const;
-	void getIndexedVertexData(vector<unsigned short> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const;
+	//void getIndexedVertexData(const vector<unsigned short> &indices, vector<float> &v_data, vector<float> &vt_data, vector<float> &vn_data) const;
 	const vector<float> getIndexedVertexData(vector<unsigned short> &indices) const;
+	const vector<float> getIndexedVertexData() const;
+	
+	//const vector<float> getIndexedTangentData(vector<unsigned short> &indices) const;
+	//const vector<float> getIndexedBiangentData(vector<unsigned short> &indices) const;
+
+	const vector<unsigned short> getElementIndex() const { return element_index; }
 
 	vector< vector<float> > getTriangles();
 	vector< vector<float> > getQuads();
@@ -135,6 +141,8 @@ public:
 	const int getVSize() const { return v_size; }
 	const int getVTSize() const { return vt_size; }
 	const int getVNSize() const { return vn_size; }
+	const int getTanSize() const { return tan_size; }
+	const int getBitanSize() const { return bitan_size; }
 	//returns # of vertices stored
 	const int getVertexCount() const { return vertex_count; }
 	//returns # of faces stored
@@ -164,6 +172,9 @@ private:
 	//vector of faces, each face is a vector of vertices
 	vector< vector<vertex_data> > faces;
 	map<unsigned short, vertex_data > vertex_map;
+	map<unsigned short, glm::vec3> tangent_map;
+	map<unsigned short, glm::vec3> bitangent_map;
+
 	vector<unsigned short> element_index;
 	
 	vector<glm::vec3> tangents;
@@ -189,6 +200,8 @@ private:
 	int vt_size;
 	int vn_size;
 	int vp_size;
+	int tan_size;
+	int bitan_size;
 	//# of vertices are stored total
 	int vertex_count;
 	//# of faces are stored total
